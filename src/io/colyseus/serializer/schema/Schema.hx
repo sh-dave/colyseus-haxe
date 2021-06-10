@@ -1,6 +1,7 @@
 package io.colyseus.serializer.schema;
 
 import haxe.ds.Either;
+import io.colyseus.events.EventHandler;
 import io.colyseus.serializer.schema.types.ISchemaCollection;
 import io.colyseus.serializer.schema.types.IRef;
 import io.colyseus.serializer.schema.types.ArraySchema;
@@ -364,8 +365,30 @@ class Schema implements IRef {
   public var _childTypes:Map<Int, Dynamic> = new Map<Int, Dynamic>();
   // private var _childSchemaTypes:Map<Int, Class<Schema>> = new Map<Int, Class<Schema>>();
   // private var _childPrimitiveTypes:Map<Int, String> = new Map<Int, String>();
+  private var listeners: Map<String, EventHandler<(Any, Any) -> Void>> = [];
 
   private var _refs:ReferenceTracker = null;
+
+  static function onError( err ) {
+    trace(err);
+  }
+
+  public function listen( attr: String, callback: (value: Any, previousValue: Any) -> Void ) : Void -> Void {
+    final slot = listeners.get(attr);
+
+    if (slot == null) {
+      final emitter = new EventHandler();
+      emitter += callback;
+      listeners.set(attr, emitter);
+    } else {
+      slot += callback;
+    }
+
+    return function() {
+      final emitter = listeners.get(attr);
+      emitter -= callback;
+    }
+  }
 
   public function setByIndex(fieldIndex: Int, dynamicIndex: Dynamic, value: Dynamic) {
     return Reflect.setField(this, this._indexes.get(fieldIndex), value);
@@ -387,6 +410,7 @@ class Schema implements IRef {
 
     this.onChange = previousSchemaInstance.onChange;
     this.onRemove = previousSchemaInstance.onRemove;
+    this.listeners = previousSchemaInstance.listeners;
 
     for (fieldIndex => _ in this._childTypes) {
       var childType = this.getByIndex(fieldIndex);
@@ -653,6 +677,9 @@ class Schema implements IRef {
       var isSchema = Std.isOfType(ref, Schema);
 
       for (change in changes) {
+        final listeners = ref.listeners;
+        final listener = listeners != null ? listeners.get(change.field) : null;
+
         if (!isSchema) {
           var container = (ref: ISchemaCollection);
 
@@ -688,6 +715,14 @@ class Schema implements IRef {
           Std.isOfType(change.previousValue, Schema)
         ) {
           (change.previousValue : Schema).onRemove();
+        }
+
+        if (listener != null) {
+          try {
+            EventHandlerDispatcher2.dispatch(listener, change.value, change.previousValue);
+          } catch (e: Any) {
+              Schema.onError(e);
+          }
         }
       }
 

@@ -1,5 +1,7 @@
 package io.colyseus.serializer.schema.types;
 
+import io.colyseus.events.EventHandler;
+
 class OrderedMapIterator<K,V> {
     var map : OrderedMap<K,V>;
     var index : Int = 0;
@@ -53,6 +55,7 @@ class MapSchema<T> implements IRef implements ISchemaCollection {
   public var __refId: Int;
   public var _childType: Dynamic;
   private var __isMapSchema: Bool = true;
+  private var listeners: Map<String, EventHandler<(Any, Any) -> Void>> = [];
 
   public function getIndex(fieldIndex: Int) {
     return this.indexes.get(fieldIndex);
@@ -101,6 +104,7 @@ class MapSchema<T> implements IRef implements ISchemaCollection {
     this.onAdd = previousInstance.onAdd;
     this.onChange = previousInstance.onChange;
     this.onRemove = previousInstance.onRemove;
+    this.listeners = previousInstance.listeners;
   }
 
   public function clear(refs: ReferenceTracker) {
