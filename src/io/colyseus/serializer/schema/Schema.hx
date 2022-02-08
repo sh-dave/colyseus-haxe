@@ -374,10 +374,10 @@ class Schema implements IRef {
   }
 
   public function listen( attr: String, callback: (value: Any, previousValue: Any) -> Void ) : Void -> Void {
-    final slot = listeners.get(attr);
+    var slot = listeners.get(attr);
 
     if (slot == null) {
-      final emitter = new EventHandler();
+      var emitter = new EventHandler();
       emitter += callback;
       listeners.set(attr, emitter);
     } else {
@@ -385,7 +385,7 @@ class Schema implements IRef {
     }
 
     return function() {
-      final emitter = listeners.get(attr);
+      var emitter = listeners.get(attr);
       emitter -= callback;
     }
   }
